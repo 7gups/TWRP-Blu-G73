@@ -22,15 +22,6 @@ jobs:
         with:
           path: device/blu/G0771
 
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: false
-          haskell: false
-          large-packages: false
-
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
@@ -45,9 +36,8 @@ jobs:
 
       - name: Initialize Minimal Manifest & Sync
         run: |
-          sudo mkdir -p /mnt/workspace
-          sudo chown -R $USER:$USER /mnt/workspace
-          cd /mnt/workspace
+          mkdir -p workspace
+          cd workspace
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
           mkdir -p device/blu
@@ -55,13 +45,17 @@ jobs:
 
       - name: Compile Recovery Image
         run: |
-          cd /mnt/workspace
+          cd workspace
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch omni_G0771-eng
           mka recoveryimage
 
       - name: Upload Recovery Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-blu-G0771
+          path: workspace/out/target/product/G0771/recovery.img      - name: Upload Recovery Artifact
         uses: actions/upload-artifact@v4
         with:
           name: recovery-blu-G0771
