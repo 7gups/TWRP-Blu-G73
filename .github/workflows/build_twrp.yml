@@ -39,7 +39,7 @@ jobs:
           sudo chown -R $USER:$USER /mnt/workspace
           cd /mnt/workspace
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
-          repo sync -j$(nproc) --force-sync --no-clone-bundle --no-tags
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
           mkdir -p device/blu
           cp -r $GITHUB_WORKSPACE/device/blu/G0771 device/blu/G0771
 
