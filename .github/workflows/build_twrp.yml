@@ -35,8 +35,9 @@ jobs:
 
       - name: Initialize Minimal Manifest & Sync
         run: |
-          mkdir -p workspace
-          cd workspace
+          sudo mkdir -p /mnt/workspace
+          sudo chown -R $USER:$USER /mnt/workspace
+          cd /mnt/workspace
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
           repo sync -j$(nproc) --force-sync --no-clone-bundle --no-tags
           mkdir -p device/blu
@@ -44,7 +45,7 @@ jobs:
 
       - name: Compile Recovery Image
         run: |
-          cd workspace
+          cd /mnt/workspace
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch omni_G0771-eng
@@ -54,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: recovery-blu-G0771
-          path: workspace/out/target/product/G0771/recovery.img
+          path: /mnt/workspace/out/target/product/G0771/recovery.img
