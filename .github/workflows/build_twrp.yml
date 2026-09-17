@@ -16,11 +16,14 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
+          remove-android: 'true'
+          remove-large-packages: 'true'
+          build-mount-path: '/mnt/workspace'
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
         with:
-          path: device/blu/G0771
+          path: device-tree
 
       - name: Install Build Dependencies
         run: |
@@ -34,28 +37,33 @@ jobs:
           chmod +x ~/.bin/repo
           echo "$HOME/.bin" >> $GITHUB_PATH
 
+      - name: Check Disk Space (before sync)
+        run: df -h
+
       - name: Initialize Minimal Manifest & Sync
         run: |
-          mkdir -p workspace
-          cd workspace
+          cd /mnt/workspace
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
           mkdir -p device/blu
-          cp -r $GITHUB_WORKSPACE/device/blu/G0771 device/blu/G0771
+          cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
+
+      - name: Check Disk Space (after sync)
+        run: df -h
 
       - name: Compile Recovery Image
         run: |
-          cd workspace
+          cd /mnt/workspace
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch omni_G0771-eng
           mka recoveryimage
 
+      - name: Check Disk Space (after build)
+        if: always()
+        run: df -h
+
       - name: Upload Recovery Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: recovery-blu-G0771
-          path: workspace/out/target/product/G0771/recovery.img      - name: Upload Recovery Artifact
         uses: actions/upload-artifact@v4
         with:
           name: recovery-blu-G0771
