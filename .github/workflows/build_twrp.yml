@@ -5,12 +5,18 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # Requires a larger GitHub-hosted runner enabled on your org/repo
+    # (Settings > Actions > Runners > larger runners). Use the exact
+    # label configured there — this is the common naming convention,
+    # but yours may differ. A 16-core runner gives ~600GB disk, which
+    # comfortably covers a 200-250GB AOSP/TWRP build; an 8-core runner
+    # (~300GB) is cutting it close and not recommended here.
+    runs-on: ubuntu-latest-16-cores
     steps:
-      - name: Maximize Build Space
+      - name: Free up preinstalled software
         uses: easimon/maximize-build-space@v10
         with:
-          root-reserve-mb: 512
+          root-reserve-mb: 8192
           swap-size-mb: 1024
           remove-dotnet: 'true'
           remove-haskell: 'true'
@@ -18,7 +24,9 @@ jobs:
           remove-docker-images: 'true'
           remove-android: 'true'
           remove-large-packages: 'true'
-          build-mount-path: '/mnt/workspace'
+          # No build-mount-path: on a large runner the root disk itself
+          # is big enough, so we just extend it in place instead of
+          # splitting off a separate LVM volume.
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
@@ -34,6 +42,41 @@ jobs:
         run: |
           mkdir -p ~/.bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+          chmod +x ~/.bin/repo
+          echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Check Disk Space (before sync)
+        run: df -h
+
+      - name: Initialize Minimal Manifest & Sync
+        run: |
+          mkdir -p workspace
+          cd workspace
+          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
+          mkdir -p device/blu
+          cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
+
+      - name: Check Disk Space (after sync)
+        run: df -h
+
+      - name: Compile Recovery Image
+        run: |
+          cd workspace
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch omni_G0771-eng
+          mka recoveryimage
+
+      - name: Check Disk Space (after build)
+        if: always()
+        run: df -h
+
+      - name: Upload Recovery Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-blu-G0771
+          path: workspace/out/target/product/G0771/recovery.img
           chmod +x ~/.bin/repo
           echo "$HOME/.bin" >> $GITHUB_PATH
 
