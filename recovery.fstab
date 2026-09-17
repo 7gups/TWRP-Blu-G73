@@ -1,0 +1,13 @@
+# Android 13 Logical Partitions Fstab for Unisoc UMS9230
+/boot         emmc     /dev/block/by-name/boot          defaults       defaults
+/vendor_boot  emmc     /dev/block/by-name/vendor_boot   defaults       defaults
+/recovery     emmc     /dev/block/by-name/recovery      defaults       defaults
+/metadata     ext4     /dev/block/by-name/metadata      flags=display="Metadata";backup=1
+/data         f2fs     /dev/block/by-name/userdata      flags=fileencryption=aes-256-xts:aes-256-cts:v1;keydirectory=/metadata/vold/metadata_encryption
+/cache        ext4     /dev/block/by-name/cache         flags=display="Cache";backup=1;wipeingui
+
+# Logical Partitions (Dynamic via Super)
+/system       logical  ext4    defaults
+/vendor       logical  ext4    defaults
+/product      logical  ext4    defaults
+/system_ext   logical  ext4    defaults
