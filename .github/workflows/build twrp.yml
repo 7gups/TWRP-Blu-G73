@@ -52,6 +52,22 @@ jobs:
         run: |
           cd workspace
           mkdir -p .repo/local_manifests
+
+          # IMPORTANT: don't hand-parse .repo/manifests/default.xml with
+          # ElementTree — minimal/AOSP manifests split into multiple files
+          # stitched together with <include name="..."/> tags, and raw
+          # ElementTree does NOT resolve includes. That mismatch is what
+          # caused "remove-project element specifies non-existent project"
+          # even for paths that genuinely exist in the manifest: our old
+          # script was looking at an incomplete, unresolved view while
+          # `repo sync` validates remove-project against the fully
+          # resolved manifest.
+          #
+          # Fix: ask repo itself to dump the fully-resolved manifest, and
+          # parse THAT instead. This guarantees we're looking at the same
+          # set of projects that repo sync will validate against.
+          repo manifest -o /tmp/resolved_manifest.xml
+
           python3 - << 'PYEOF'
           import xml.etree.ElementTree as ET
 
@@ -113,12 +129,15 @@ jobs:
               "packages/apps/Car/libs", "packages/apps/Car/tests", "packages/services/Car",
           ]
 
-          tree = ET.parse('.repo/manifests/default.xml')
+          tree = ET.parse('/tmp/resolved_manifest.xml')
           root = tree.getroot()
           path_to_name = {}
           for project in root.findall('project'):
-              p = project.get('path')
               n = project.get('name')
+              # path is optional in repo manifests — when omitted it
+              # defaults to the value of name. Fall back accordingly so
+              # we don't silently drop entries that rely on that default.
+              p = project.get('path') or n
               if p and n:
                   path_to_name[p] = n
 
@@ -137,9 +156,14 @@ jobs:
 
           print(f"Removing {found} projects from sync.")
           if missing:
-              print(f"Note: {len(missing)} paths not found in manifest (already absent or renamed): {missing}")
+              print(f"Note: {len(missing)} paths not found in resolved manifest (already absent or renamed): {missing}")
           PYEOF
+          echo "--- Generated local manifest ---"
           cat .repo/local_manifests/remove_unused.xml
+          echo "--- repo tool version ---"
+          repo --version
+          echo "--- Raw line for device/google/atv in resolved manifest ---"
+          grep -n 'device/google/atv' /tmp/resolved_manifest.xml || echo "(not found in resolved manifest)"
 
       - name: Sync source
         run: |
