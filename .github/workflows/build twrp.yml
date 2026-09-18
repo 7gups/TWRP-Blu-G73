@@ -10,7 +10,13 @@ jobs:
       - name: Maximize Build Space
         uses: easimon/maximize-build-space@v10
         with:
-          root-reserve-mb: 2048
+          # root-reserve-mb is the ceiling root keeps -- everything above
+          # it gets carved out immediately (non-sparse) into the buildlv
+          # image. 2048 left root with only ~100MB free after this step,
+          # which is too tight for the apt-get install that follows.
+          # Raised to give root real breathing room; buildlv shrinks a
+          # bit in exchange, which --depth=1 on repo sync should offset.
+          root-reserve-mb: 8192
           swap-size-mb: 1024
           remove-dotnet: 'true'
           remove-haskell: 'true'
@@ -205,4 +211,3 @@ jobs:
         with:
           name: recovery-blu-G0771
           path: workspace/out/target/product/G0771/recovery.img
-          
