@@ -7,16 +7,20 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Free up disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /etc/mysql /etc/php /etc/apt/sources.list.d
-          sudo docker image prune --all --force 2>/dev/null || true
-          df -h
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          remove-android: 'true'
+          remove-large-packages: 'true'
+
+      - name: Check Disk Space (after cleanup)
+        run: df -h
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
@@ -38,17 +42,170 @@ jobs:
       - name: Check Disk Space (before sync)
         run: df -h
 
-      - name: Initialize Minimal Manifest & Sync
+      - name: Initialize Minimal Manifest
         run: |
           mkdir -p workspace
           cd workspace
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
+
+      - name: Trim unneeded projects from manifest
+        run: |
+          cd workspace
+          mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/remove_unused.xml << 'XMLEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <!-- Other vendors' device trees and kernels - not needed for our Unisoc device -->
+            <remove-project name="device/google/atv" />
+            <remove-project name="device/google/barbet" />
+            <remove-project name="device/google/barbet-kernel" />
+            <remove-project name="device/google/barbet-sepolicy" />
+            <remove-project name="device/google/bonito" />
+            <remove-project name="device/google/bonito-kernel" />
+            <remove-project name="device/google/bonito-sepolicy" />
+            <remove-project name="device/google/bramble" />
+            <remove-project name="device/google/bramble-sepolicy" />
+            <remove-project name="device/google/coral" />
+            <remove-project name="device/google/coral-kernel" />
+            <remove-project name="device/google/coral-sepolicy" />
+            <remove-project name="device/google/gs101" />
+            <remove-project name="device/google/gs101-sepolicy" />
+            <remove-project name="device/google/gs-common" />
+            <remove-project name="device/google/raviole" />
+            <remove-project name="device/google/raviole-kernel" />
+            <remove-project name="device/google/redbull" />
+            <remove-project name="device/google/redbull-kernel" />
+            <remove-project name="device/google/redbull-sepolicy" />
+            <remove-project name="device/google/redfin" />
+            <remove-project name="device/google/redfin-sepolicy" />
+            <remove-project name="device/google/sunfish" />
+            <remove-project name="device/google/sunfish-kernel" />
+            <remove-project name="device/google/sunfish-sepolicy" />
+            <remove-project name="device/google/crosshatch" />
+            <remove-project name="device/google/crosshatch-kernel" />
+            <remove-project name="device/google/crosshatch-sepolicy" />
+            <remove-project name="device/google/cuttlefish" />
+            <remove-project name="device/google/cuttlefish_prebuilts" />
+            <remove-project name="device/google/trout" />
+            <remove-project name="device/google_car" />
+            <remove-project name="device/linaro/dragonboard" />
+            <remove-project name="device/linaro/dragonboard-kernel" />
+            <remove-project name="device/linaro/hikey" />
+            <remove-project name="device/linaro/hikey-kernel" />
+            <remove-project name="device/linaro/poplar" />
+            <remove-project name="device/linaro/poplar-kernel" />
+            <remove-project name="device/ti/beagle-x15" />
+            <remove-project name="device/ti/beagle-x15-kernel" />
+            <remove-project name="device/amlogic/yukawa" />
+            <remove-project name="device/amlogic/yukawa-kernel" />
+            <remove-project name="device/mediatek/wembley-sepolicy" />
+
+            <!-- Qualcomm HALs - device is Unisoc/Spreadtrum, not Qualcomm -->
+            <remove-project name="platform/hardware/qcom/audio" />
+            <remove-project name="platform/hardware/qcom/bootctrl" />
+            <remove-project name="platform/hardware/qcom/bt" />
+            <remove-project name="platform/hardware/qcom/camera" />
+            <remove-project name="platform/hardware/qcom/data/ipacfg-mgr" />
+            <remove-project name="platform/hardware/qcom/display" />
+            <remove-project name="platform/hardware/qcom/gps" />
+            <remove-project name="platform/hardware/qcom/keymaster" />
+            <remove-project name="platform/hardware/qcom/media" />
+            <remove-project name="platform/hardware/qcom/msm8960" />
+            <remove-project name="platform/hardware/qcom/msm8994" />
+            <remove-project name="platform/hardware/qcom/msm8996" />
+            <remove-project name="platform/hardware/qcom/msm8x09" />
+            <remove-project name="platform/hardware/qcom/msm8x26" />
+            <remove-project name="platform/hardware/qcom/msm8x27" />
+            <remove-project name="platform/hardware/qcom/msm8x84" />
+            <remove-project name="platform/hardware/qcom/power" />
+            <remove-project name="platform/hardware/qcom/sdm845/bt" />
+            <remove-project name="platform/hardware/qcom/sdm845/data/ipacfg-mgr" />
+            <remove-project name="platform/hardware/qcom/sdm845/display" />
+            <remove-project name="platform/hardware/qcom/sdm845/gps" />
+            <remove-project name="platform/hardware/qcom/sdm845/media" />
+            <remove-project name="platform/hardware/qcom/sdm845/thermal" />
+            <remove-project name="platform/hardware/qcom/sdm845/vr" />
+            <remove-project name="platform/hardware/qcom/sm7150/gps" />
+            <remove-project name="platform/hardware/qcom/sm7250/display" />
+            <remove-project name="platform/hardware/qcom/sm7250/gps" />
+            <remove-project name="platform/hardware/qcom/sm7250/media" />
+            <remove-project name="platform/hardware/qcom/sm8150/data/ipacfg-mgr" />
+            <remove-project name="platform/hardware/qcom/sm8150/display" />
+            <remove-project name="platform/hardware/qcom/sm8150/gps" />
+            <remove-project name="platform/hardware/qcom/sm8150/media" />
+            <remove-project name="platform/hardware/qcom/sm8150/thermal" />
+            <remove-project name="platform/hardware/qcom/sm8150/vr" />
+            <remove-project name="platform/hardware/qcom/sm8150p/gps" />
+            <remove-project name="platform/hardware/qcom/wlan" />
+
+            <!-- macOS/Darwin host toolchains - unused on a Linux CI runner -->
+            <remove-project name="platform/prebuilts/bazel/darwin-x86_64" />
+            <remove-project name="platform/prebuilts/clang/host/darwin-x86" />
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/aarch64/aarch64-linux-android-4.9" />
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/arm/arm-linux-androideabi-4.9" />
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1" />
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/x86/x86_64-linux-android-4.9" />
+            <remove-project name="platform/prebuilts/gdb/darwin-x86" />
+            <remove-project name="platform/prebuilts/go/darwin-x86" />
+            <remove-project name="platform/prebuilts/python/darwin-x86/2.7.5" />
+
+            <!-- Kernel prebuilts for versions/virtual devices we don't use (we supply our own prebuilt kernel) -->
+            <remove-project name="kernel/prebuilts/4.19/arm64" />
+            <remove-project name="kernel/prebuilts/5.4/arm64" />
+            <remove-project name="kernel/prebuilts/5.4/x86_64" />
+            <remove-project name="kernel/prebuilts/5.10/arm64" />
+            <remove-project name="kernel/prebuilts/5.10/x86_64" />
+            <remove-project name="kernel/prebuilts/mainline/arm64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/4.19/arm64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/4.19/x86-64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.10/arm64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.10/x86-64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.4/arm64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.4/x86-64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/mainline/arm64" />
+            <remove-project name="kernel/prebuilts/common-modules/virtual-device/mainline/x86-64" />
+
+            <!-- Android Automotive apps - phone recovery doesn't need these -->
+            <remove-project name="platform/packages/apps/Car/Calendar" />
+            <remove-project name="platform/packages/apps/Car/SystemUI" />
+            <remove-project name="platform/packages/apps/Car/Cluster" />
+            <remove-project name="platform/packages/apps/Car/DebuggingRestrictionController" />
+            <remove-project name="platform/packages/apps/Car/Dialer" />
+            <remove-project name="platform/packages/apps/Car/Hvac" />
+            <remove-project name="platform/packages/apps/Car/LatinIME" />
+            <remove-project name="platform/packages/apps/Car/Launcher" />
+            <remove-project name="platform/packages/apps/Car/LinkViewer" />
+            <remove-project name="platform/packages/apps/Car/LocalMediaPlayer" />
+            <remove-project name="platform/packages/apps/Car/Media" />
+            <remove-project name="platform/packages/apps/Car/Messenger" />
+            <remove-project name="platform/packages/apps/Car/Notification" />
+            <remove-project name="platform/packages/apps/Car/Provision" />
+            <remove-project name="platform/packages/apps/Car/Radio" />
+            <remove-project name="platform/packages/apps/Car/RotaryController" />
+            <remove-project name="platform/packages/apps/Car/Settings" />
+            <remove-project name="platform/packages/apps/Car/SettingsIntelligence" />
+            <remove-project name="platform/packages/apps/Car/SystemUpdater" />
+            <remove-project name="platform/packages/apps/Car/libs" />
+            <remove-project name="platform/packages/apps/Car/tests" />
+            <remove-project name="platform/packages/services/Car" />
+          </manifest>
+          XMLEOF
+
+      - name: Sync source
+        run: |
+          cd workspace
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
           mkdir -p device/blu
           cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
 
       - name: Check Disk Space (after sync)
         run: df -h
+
+      - name: Clean up unneeded source before build
+        run: |
+          cd workspace
+          rm -rf .repo/project-objects
+          df -h
 
       - name: Compile Recovery Image
         run: |
@@ -56,7 +213,7 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch twrp_G0771-eng
-          mka recoveryimage
+          mka -j2 recoveryimage
 
       - name: Check Disk Space (after build)
         if: always()
@@ -67,46 +224,4 @@ jobs:
         with:
           name: recovery-blu-G0771
           path: workspace/out/target/product/G0771/recovery.img
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zip zlib1g-dev
-
-      - name: Install Repo Tool
-        run: |
-          mkdir -p ~/.bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
-          chmod +x ~/.bin/repo
-          echo "$HOME/.bin" >> $GITHUB_PATH
-
-      - name: Check Disk Space (before sync)
-        run: df -h
-
-      - name: Initialize Minimal Manifest & Sync
-        run: |
-          mkdir -p workspace
-          cd workspace
-          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
-          mkdir -p device/blu
-          cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
-
-      - name: Check Disk Space (after sync)
-        run: df -h
-
-      - name: Compile Recovery Image
-        run: |
-          cd workspace
-          source build/envsetup.sh
-          export ALLOW_MISSING_DEPENDENCIES=true
-          lunch omni_G0771-eng
-          mka recoveryimage
-
-      - name: Check Disk Space (after build)
-        if: always()
-        run: df -h
-
-      - name: Upload Recovery Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: recovery-blu-G0771
-          path: workspace/out/target/product/G0771/recovery.img
+          
