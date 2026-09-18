@@ -168,7 +168,14 @@ jobs:
       - name: Sync source
         run: |
           cd workspace
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
+          # --depth=1 is the big one: without it, repo sync fetches full
+          # git history for every one of the 400+ remaining projects,
+          # which is typically 3-10x the size of a shallow checkout.
+          # repo init --depth=1 earlier only shallow-clones the manifest
+          # repo itself, not the projects it lists -- that has to be
+          # passed to repo sync separately. History isn't needed to
+          # build, only to `git log`/`git blame`, so this is safe here.
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync --depth=1 -j$(nproc)
           mkdir -p device/blu
           cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
 
