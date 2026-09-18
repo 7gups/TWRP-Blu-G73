@@ -4,7 +4,7 @@ An unofficial twrp (ver: 12.1) img for Blu G73 (G0771)
 
 # Building
 
-Click on "Use this template" and give your repo a name. (Include all branches, Description and Visibility not needed)
+Click on "Use this template" (or fork) and give your repo a name. (Include all branches, Description and Visibility not needed)
 
 <img width="720" height="186" alt="1000150580" src="https://github.com/user-attachments/assets/de4e8b73-976f-4547-b91c-188bbcf90baf" />
 
