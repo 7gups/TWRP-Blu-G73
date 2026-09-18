@@ -79,7 +79,15 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch twrp_G0771-eng
-          mka -j2 recoveryimage
+          # Confirmed from the actual device tree: BOARD_USES_RECOVERY_AS_BOOT
+          # is true with NO GKI flags (no BOARD_USES_GENERIC_KERNEL_IMAGE,
+          # no BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT), boot (not
+          # vendor_boot) is in AB_OTA_PARTITIONS, and recovery.fstab has a
+          # /boot partition with no /vendor_boot entry at all. This is a
+          # classic recovery-as-boot device: TWRP is baked into boot.img
+          # via the bootimage target, not a separate recoveryimage or
+          # vendorbootimage target.
+          mka -j2 bootimage
 
       - name: Check Disk Space (after build)
         if: always()
