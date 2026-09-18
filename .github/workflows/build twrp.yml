@@ -85,9 +85,25 @@ jobs:
         if: always()
         run: df -h
 
+      # BOARD_USES_RECOVERY_AS_BOOT devices (this device tree uses it)
+      # produce boot.img, not recovery.img -- mka recoveryimage still
+      # succeeds, it just writes a different filename. List what's
+      # actually there so the log confirms which one got built.
+      - name: List Build Output
+        if: always()
+        run: |
+          echo "--- Contents of out/target/product/G0771 ---"
+          ls -la workspace/out/target/product/G0771/ || echo "product output dir not found"
+          echo "--- Any .img files anywhere under out/ ---"
+          find workspace/out -maxdepth 6 -iname '*.img' 2>/dev/null || true
+
       - name: Upload Recovery Artifact
         uses: actions/upload-artifact@v4
         with:
           name: recovery-blu-G0771
-          path: workspace/out/target/product/G0771/recovery.img
+          path: |
+            workspace/out/target/product/G0771/vendor_boot.img
+            workspace/out/target/product/G0771/recovery.img
+            workspace/out/target/product/G0771/boot.img
+          if-no-files-found: warn
           
