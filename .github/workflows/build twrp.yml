@@ -12,21 +12,12 @@ jobs:
         with:
           path: device-tree
 
-      # Simple rm-based cleanup of preinstalled bloat (dotnet, Android SDK,
-      # GHC, etc.) directly off the root filesystem -- no LVM, no fallocate,
-      # no separate volume. This is what avoids the root-gets-eaten-alive
-      # problem the easimon/maximize-build-space + manifest-trimming
-      # approach ran into: that action pre-allocates a real, non-sparse
-      # image file for its build volume the moment it runs, which left
-      # root with almost nothing free for the apt-get step that follows.
       - name: Cleanup
         uses: rokibhasansagar/slimhub_actions@main
 
       - name: Check Disk Space (after cleanup)
         run: df -h
 
-      # Swap only -- this doesn't touch disk space, just gives the linker
-      # more headroom on the runner's ~7.75GB RAM during compile/link.
       - name: Set Swap Space
         uses: pierotofy/set-swap-space@master
         with:
@@ -57,10 +48,6 @@ jobs:
         run: |
           mkdir -p workspace
           cd workspace
-          # --depth=1 here is what actually shallow-clones every project
-          # during the sync below, not just the manifest repo itself --
-          # this alone accounts for most of the disk savings other
-          # TWRP-builder CI recipes rely on, no manifest trimming needed.
           repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
 
       - name: Repo Sync
@@ -79,39 +66,17 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch twrp_G0771-eng
-          # Confirmed from the actual device tree: BOARD_USES_RECOVERY_AS_BOOT
-          # is true with NO GKI flags (no BOARD_USES_GENERIC_KERNEL_IMAGE,
-          # no BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT), boot (not
-          # vendor_boot) is in AB_OTA_PARTITIONS, and recovery.fstab has a
-          # /boot partition with no /vendor_boot entry at all. This is a
-          # classic recovery-as-boot device: TWRP is baked into boot.img
-          # via the bootimage target, not a separate recoveryimage or
-          # vendorbootimage target.
           mka -j2 bootimage
 
       - name: Check Disk Space (after build)
         if: always()
         run: df -h
 
-      # BOARD_USES_RECOVERY_AS_BOOT devices (this device tree uses it)
-      # produce boot.img, not recovery.img -- mka recoveryimage still
-      # succeeds, it just writes a different filename. List what's
-      # actually there so the log confirms which one got built.
-      - name: List Build Output
-        if: always()
-        run: |
-          echo "--- Contents of out/target/product/G0771 ---"
-          ls -la workspace/out/target/product/G0771/ || echo "product output dir not found"
-          echo "--- Any .img files anywhere under out/ ---"
-          find workspace/out -maxdepth 6 -iname '*.img' 2>/dev/null || true
-
       - name: Upload Recovery Artifact
         uses: actions/upload-artifact@v4
         with:
           name: recovery-blu-G0771
           path: |
-            workspace/out/target/product/G0771/vendor_boot.img
-            workspace/out/target/product/G0771/recovery.img
             workspace/out/target/product/G0771/boot.img
           if-no-files-found: warn
           
