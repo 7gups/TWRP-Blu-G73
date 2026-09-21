@@ -1,0 +1,27 @@
+# Miscellaneous
+apr.flag.bootmode=1
+oem_trusted_authority=com.sprd.android.providers.SpecialTypesProvider
+oem_trusted_certificate=830CBC9349DCEA36460EE247C3FEEB71FCF1F6D1
+persist.netmon.linger=10000
+persist.storage.type=2
+persist.sys.extrainfo=
+persist.sys.fuse.passthrough.enable=true
+ro.carrier=oversea
+ro.com.google.acsa=true
+ro.com.google.clientidbase=android-blu
+ro.com.google.clientidbase.ms=android-blu-rvo3
+ro.com.google.clientidbase.tx=android-blu-rvo3
+ro.com.google.clientidbase.vs=android-blu-rvo3
+ro.com.google.gmsversion=13_202301
+ro.config.alarm_alert=Alarm_Clock2.mp3
+ro.config.notification_sound=BLU_Message3.mp3
+ro.config.ringtone=BLU_Ringtone4.mp3,BLU_Ringtone4.mp3
+ro.opa.eligible_device=true
+ro.postinstall.fstab.prefix=/product
+ro.product.ab_ota_partitions=boot,dtbo,l_agdsp,l_deltanv,l_fixnv1,l_fixnv2,l_gdsp,l_ldsp,l_modem,mmcblk0boot1,odm,pm_sys,product,sdc,sml,system,system_ext,teecfg,trustos,uboot,vbmeta,vbmeta_odm,vbmeta_product,vbmeta_system,vbmeta_system_ext,vbmeta_vendor,vendor,vendor_boot,vendor_dlkm
+ro.product.hardware=ums9230_1h10
+ro.secure_boot.state=1
+ro.setupwizard.rotation_locked=true
+setupwizard.theme=glif_v3_light
+sys.internal.emulated=1
+
