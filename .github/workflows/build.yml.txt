@@ -1,0 +1,118 @@
+name: Build TWRP for BLU G0771
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Device Tree
+        uses: actions/checkout@v4
+        with:
+          path: device-tree
+
+      # Simple rm-based cleanup of preinstalled bloat (dotnet, Android SDK,
+      # GHC, etc.) directly off the root filesystem -- no LVM, no fallocate,
+      # no separate volume. This is what avoids the root-gets-eaten-alive
+      # problem the easimon/maximize-build-space + manifest-trimming
+      # approach ran into: that action pre-allocates a real, non-sparse
+      # image file for its build volume the moment it runs, which left
+      # root with almost nothing free for the apt-get step that follows.
+      - name: Cleanup
+        uses: rokibhasansagar/slimhub_actions@main
+
+      - name: Check Disk Space (after cleanup)
+        run: df -h
+
+      # Swap only -- this doesn't touch disk space, just gives the linker
+      # more headroom on the runner's ~7.75GB RAM during compile/link.
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 12
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zip zlib1g-dev
+
+      - name: Install OpenJDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Install Repo Tool
+        run: |
+          mkdir -p ~/.bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+          chmod +x ~/.bin/repo
+          echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Check Disk Space (before sync)
+        run: df -h
+
+      - name: Initialize Minimal Manifest
+        run: |
+          mkdir -p workspace
+          cd workspace
+          # --depth=1 here is what actually shallow-clones every project
+          # during the sync below, not just the manifest repo itself --
+          # this alone accounts for most of the disk savings other
+          # TWRP-builder CI recipes rely on, no manifest trimming needed.
+          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1 --depth=1
+
+      - name: Repo Sync
+        run: |
+          cd workspace
+          repo sync -j$(nproc --all) --force-sync
+          mkdir -p device/blu
+          cp -r "$GITHUB_WORKSPACE/device-tree" device/blu/G0771
+
+      - name: Check Disk Space (after sync)
+        run: df -h
+
+      - name: Compile Recovery Image
+        run: |
+          cd workspace
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch twrp_G0771-eng
+          # Corrected: the device tree was regenerated from a full firmware
+          # dump (via dumpyara + twrpdtgen_v3) rather than a bare boot.img,
+          # and confirmed via boot image analysis + the stock firmware's own
+          # ro.product.ab_ota_partitions prop that this device genuinely
+          # uses vendor_boot (BOARD_USES_GENERIC_KERNEL_IMAGE and
+          # BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT are both set).
+          # The earlier "classic recovery-as-boot" assumption was based on
+          # an incomplete first-pass device tree and was wrong. TWRP now
+          # gets baked into vendor_boot.img via the vendorbootimage target.
+          mka -j2 vendorbootimage
+
+      - name: Check Disk Space (after build)
+        if: always()
+        run: df -h
+
+      # GKI/vendor_boot devices (this device tree now correctly declares
+      # BOARD_USES_GENERIC_KERNEL_IMAGE + BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT)
+      # produce vendor_boot.img via the vendorbootimage target, not boot.img.
+      # boot.img still gets built alongside it but only carries the generic
+      # kernel -- no TWRP resources -- so it's not the file to flash.
+      - name: List Build Output
+        if: always()
+        run: |
+          echo "--- Contents of out/target/product/G0771 ---"
+          ls -la workspace/out/target/product/G0771/ || echo "product output dir not found"
+          echo "--- Any .img files anywhere under out/ ---"
+          find workspace/out -maxdepth 6 -iname '*.img' 2>/dev/null || true
+
+      - name: Upload Recovery Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-blu-G0771
+          path: |
+            workspace/out/target/product/G0771/vendor_boot.img
+            workspace/out/target/product/G0771/recovery.img
+            workspace/out/target/product/G0771/boot.img
+          if-no-files-found: warn
