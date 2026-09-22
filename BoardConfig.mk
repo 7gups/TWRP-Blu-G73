@@ -41,6 +41,10 @@ TARGET_NO_BOOTLOADER := true
 
 # Display
 TARGET_SCREEN_DENSITY := 320
+# TWRP requires an explicit theme and dimensions for ui.xml generation.
+TW_THEME := portrait_hdpi
+TARGET_SCREEN_WIDTH := 720
+TARGET_SCREEN_HEIGHT := 1600
 
 # Kernel
 BOARD_BOOT_HEADER_VERSION := 4
