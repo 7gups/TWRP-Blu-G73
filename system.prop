@@ -60,7 +60,6 @@ pm.dexopt.install-fast=skip
 pm.dexopt.post-boot=extract
 pm.dexopt.shared=speed
 ro.actionable_compatible_property.enabled=true
-ro.allow.mock.location=0
 ro.boot.custom_int_version=BLU_G0771_V13.0.04.11_GENERIC 13-09-2023 12:01
 ro.boot.custom_version=BLU_G0771_V13.0.04.11_GENERIC 13-09-2023 12:01
 ro.boot.hardware.sku=G0771
