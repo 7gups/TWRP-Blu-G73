@@ -79,15 +79,16 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch twrp_G0771-eng
-          # Corrected: the device tree was regenerated from a full firmware
-          # dump (via dumpyara + twrpdtgen_v3) rather than a bare boot.img,
-          # and confirmed via boot image analysis + the stock firmware's own
-          # ro.product.ab_ota_partitions prop that this device genuinely
-          # uses vendor_boot (BOARD_USES_GENERIC_KERNEL_IMAGE and
-          # BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT are both set).
-          # The earlier "classic recovery-as-boot" assumption was based on
-          # an incomplete first-pass device tree and was wrong. TWRP now
-          # gets baked into vendor_boot.img via the vendorbootimage target.
+          # First pass is expected to fail at the known root/vendor
+          # symlink-vs-real-directory collision (a documented TWRP build
+          # quirk: relink_vendor_hw_binaries populates real files at
+          # recovery/root/vendor/bin/hw early in the build, then a later
+          # generic packaging step tries to place a symlink at the same
+          # path and collides with it). Clearing that directory and
+          # re-running resumes the incremental ninja build from where it
+          # left off -- this is the standard fix for this exact error.
+          mka -j2 vendorbootimage || true
+          rm -rf out/target/product/G0771/root/vendor
           mka -j2 vendorbootimage
 
       - name: Check Disk Space (after build)
