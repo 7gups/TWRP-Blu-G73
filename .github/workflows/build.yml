@@ -79,15 +79,9 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch twrp_G0771-eng
-          # First pass is expected to fail at the known root/vendor
-          # symlink-vs-real-directory collision (a documented TWRP build
-          # quirk: relink_vendor_hw_binaries populates real files at
-          # recovery/root/vendor/bin/hw early in the build, then a later
-          # generic packaging step tries to place a symlink at the same
-          # path and collides with it). Clearing that directory and
-          # re-running resumes the incremental ninja build from where it
-          # left off -- this is the standard fix for this exact error.
           mka -j2 vendorbootimage || true
+          echo "--- ninja rule for vendor_ramdisk.cpio.gz ---"
+          grep -B5 -A20 "vendor_ramdisk.cpio.gz" out/combined-twrp_G0771.ninja || grep -B5 -A20 "vendor_ramdisk.cpio.gz" out/build-twrp_G0771.ninja || echo "ninja file not found under expected name"
           rm -rf out/target/product/G0771/root/vendor
           mka -j2 vendorbootimage
 
