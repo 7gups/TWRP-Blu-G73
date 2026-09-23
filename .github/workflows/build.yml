@@ -87,9 +87,9 @@ jobs:
           # path and collides with it). Clearing that directory and
           # re-running resumes the incremental ninja build from where it
           # left off -- this is the standard fix for this exact error.
-          mka -j1 vendorbootimage || true
+          mka -j2 vendorbootimage || true
           rm -rf out/target/product/G0771/root/vendor
-          mka -j1 vendorbootimage
+          mka -j2 vendorbootimage
 
       - name: Check Disk Space (after build)
         if: always()
